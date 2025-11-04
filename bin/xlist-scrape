@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+
+// This is the executable entry point for the CLI
+import "../dist/cli.js";

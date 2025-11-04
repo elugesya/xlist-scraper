@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  xlist-scraper:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - HEADLESS=true
+      - LOG_LEVEL=info
+      - CONCURRENCY=1
+      # Uncomment to enable auth
+      # - AUTH_MODE=required
+      # Uncomment to use proxy
+      # - PROXY=http://user:pass@proxy:port
+    volumes:
+      # Persist cookies between restarts
+      - cookies-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  cookies-data:

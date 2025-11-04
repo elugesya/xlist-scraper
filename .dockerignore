@@ -1,0 +1,14 @@
+node_modules
+dist
+*.log
+.git
+.gitignore
+.env
+.DS_Store
+coverage
+.vscode
+.idea
+README.md
+*.md
+!package.json
+!pnpm-lock.yaml
