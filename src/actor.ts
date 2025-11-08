@@ -11,7 +11,10 @@ interface ApifyInput {
   timeoutMs?: number;
   headless?: boolean;
   proxy?: string;
+  useApifyProxy?: boolean;
+  proxyGroups?: string[];
   persistCookiesPath?: string;
+  cookiesKey?: string;
   partialOk?: boolean;
 }
 
@@ -44,6 +47,42 @@ async function main() {
     error?: string;
   }> = [];
 
+  // If cookies are provided via KV store, save to file
+  if (input.cookiesKey) {
+    try {
+      const cookies = await Actor.getValue(input.cookiesKey);
+      if (cookies) {
+        const fs = await import("fs/promises");
+        const path = await import("path");
+        const cookiePath = input.persistCookiesPath || "/data/cookies.json";
+        await fs.mkdir(path.dirname(cookiePath), { recursive: true });
+        await fs.writeFile(cookiePath, JSON.stringify(cookies, null, 2));
+        log.info(`Loaded cookies from KV key '${input.cookiesKey}' into ${cookiePath}`);
+      } else {
+        log.warning(`cookiesKey '${input.cookiesKey}' not found or empty`);
+      }
+    } catch (e) {
+      log.warning(`Failed to load cookies: ${(e as Error).message}`);
+    }
+  }
+
+  // Prepare proxy
+  let proxyUrl = input.proxy || "";
+  if (!proxyUrl && input.useApifyProxy) {
+    try {
+      const proxyConfig = await Actor.createProxyConfiguration({ groups: input.proxyGroups });
+      const newUrl = await proxyConfig?.newUrl();
+      if (newUrl) {
+        proxyUrl = newUrl;
+        log.info(`Using Apify proxy${input.proxyGroups?.length ? ` groups=${input.proxyGroups.join(',')}` : ''}`);
+      } else {
+        log.warning("Apify proxy returned undefined URL");
+      }
+    } catch (e) {
+      log.warning(`Could not initialize Apify proxy: ${(e as Error).message}`);
+    }
+  }
+
   // Process each list
   for (const listURL of input.listURLs) {
     try {
@@ -53,8 +92,8 @@ async function main() {
         maxTweets: input.maxTweets || 200,
         timeoutMs: input.timeoutMs || 60000,
         headless: input.headless !== false,
-        proxy: input.proxy || "",
-        persistCookiesPath: input.persistCookiesPath || "",
+        proxy: proxyUrl,
+        persistCookiesPath: input.persistCookiesPath || "/data/cookies.json",
         partialOk: input.partialOk || false,
       });
 

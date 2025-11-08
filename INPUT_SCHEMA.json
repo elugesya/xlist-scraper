@@ -43,12 +43,34 @@
       "editor": "textfield",
       "default": ""
     },
+    "useApifyProxy": {
+      "title": "Use Apify Proxy",
+      "type": "boolean",
+      "description": "Use Apify Proxy for requests",
+      "editor": "checkbox",
+      "default": false
+    },
+    "proxyGroups": {
+      "title": "Apify Proxy Groups",
+      "type": "array",
+      "description": "Optional Apify Proxy groups (e.g., SHADER)",
+      "items": { "type": "string" },
+      "editor": "json",
+      "default": []
+    },
     "persistCookiesPath": {
       "title": "Cookies Path",
       "type": "string",
       "description": "File path to store/load cookies (inside container)",
       "editor": "textfield",
       "default": "/data/cookies.json"
+    },
+    "cookiesKey": {
+      "title": "Cookies KV Key",
+      "type": "string",
+      "description": "Key in default key-value store containing cookies JSON",
+      "editor": "textfield",
+      "default": ""
     },
     "partialOk": {
       "title": "Allow Partial Results",

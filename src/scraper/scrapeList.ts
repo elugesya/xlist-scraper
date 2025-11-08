@@ -89,8 +89,12 @@ export async function scrapeList(
       }
     }
 
-    // Wait for initial tweets to load
-    const loaded = await waitForTweets(page, 10000);
+    // Wait for initial tweets to load (progressively increase wait)
+    let loaded = await waitForTweets(page, 12000);
+    if (!loaded) {
+      await scrollToLoadMore(page);
+      loaded = await waitForTweets(page, 8000);
+    }
     if (!loaded) {
       throw new Error("No tweets found on the page. The list may be empty or private.");
     }

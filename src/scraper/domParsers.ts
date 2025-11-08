@@ -112,7 +112,7 @@ export async function waitForTweets(
   timeoutMs: number = 30000
 ): Promise<boolean> {
   try {
-    await page.waitForSelector('article[data-testid="tweet"]', {
+    await page.waitForSelector('article[data-testid="tweet"], article:has([data-testid="tweetText"])', {
       timeout: timeoutMs,
     });
     return true;
@@ -161,7 +161,7 @@ export async function getTweetArticles(
   page: Page
 ): Promise<ElementHandle<HTMLElement | SVGElement>[]> {
   // Playwright may return SVGElement handles (e.g., icons). Allow union type.
-  return await page.$$('article[data-testid="tweet"]');
+  return await page.$$('article[data-testid="tweet"], article:has([data-testid="tweetText"])');
 }
 
 /**
@@ -174,6 +174,9 @@ export async function checkForBlockers(
   const loginSelectors = [
     'text="Sign in to X"',
     'text="Log in to X"',
+    'text="Sign in"',
+    'text="Log in"',
+    'aria/Sign in',
     '[data-testid="login"]',
   ];
   for (const sel of loginSelectors) {
@@ -187,6 +190,8 @@ export async function checkForBlockers(
   const rateLimitSelectors = [
     'text="Rate limit exceeded"',
     'text="Too many requests"',
+    'text=/rate limit/i',
+    'text=/too many/i',
   ];
   for (const sel of rateLimitSelectors) {
     const rateLimitText = await page.$(sel);
