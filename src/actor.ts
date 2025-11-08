@@ -27,24 +27,72 @@ interface ApifyContext {
 }
 
 /**
+ * Read input from Apify key-value store
+ */
+async function readInput(): Promise<ApifyInput> {
+  const fs = await import("fs/promises");
+
+  // Apify stores input at /tmp/INPUT
+  const inputPath = process.env.APIFY_INPUT_KEY 
+    ? `/apify_storage/key_value_stores/default/${process.env.APIFY_INPUT_KEY}`
+    : process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID
+    ? `/apify_storage/key_value_stores/${process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID}/INPUT`
+    : "/tmp/INPUT";
+
+  try {
+    const inputContent = await fs.readFile(inputPath, "utf-8");
+    return JSON.parse(inputContent);
+  } catch (error) {
+    // Fallback to environment variable for local testing
+    if (process.env.APIFY_INPUT_VALUE) {
+      return JSON.parse(process.env.APIFY_INPUT_VALUE);
+    }
+    throw new Error(`Could not read input from ${inputPath}: ${error}`);
+  }
+}
+
+/**
+ * Push data to Apify dataset
+ */
+async function pushToDataset(data: unknown): Promise<void> {
+  const fs = await import("fs/promises");
+  const pathModule = await import("path");
+
+  const datasetDir = process.env.APIFY_DEFAULT_DATASET_ID
+    ? `/apify_storage/datasets/${process.env.APIFY_DEFAULT_DATASET_ID}`
+    : "/apify_storage/datasets/default";
+
+  try {
+    // Ensure directory exists
+    await fs.mkdir(datasetDir, { recursive: true });
+
+    // Write item with timestamp-based filename
+    const filename = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.json`;
+    await fs.writeFile(
+      pathModule.join(datasetDir, filename),
+      JSON.stringify(data, null, 2)
+    );
+  } catch (error) {
+    console.error("Failed to push to dataset:", error);
+    // Fallback: log to stdout
+    console.log(JSON.stringify({ data }, null, 2));
+  }
+}
+
+/**
  * Get Apify context (works both with SDK and without)
  */
-function getApifyContext(): ApifyContext | null {
+async function getApifyContext(): Promise<ApifyContext | null> {
   // Check if running in Apify environment
   if (!process.env.APIFY_IS_AT_HOME) {
     return null;
   }
 
-  // Read input from environment
-  const inputStr = process.env.APIFY_INPUT_VALUE || "{}";
-  const input: ApifyInput = JSON.parse(inputStr);
+  const input = await readInput();
 
   return {
     input,
-    pushData: async (data: unknown) => {
-      // Push to stdout in Apify format
-      console.log(JSON.stringify({ data }, null, 2));
-    },
+    pushData: pushToDataset,
     log: {
       info: (msg: string) => console.log(`INFO: ${msg}`),
       error: (msg: string) => console.error(`ERROR: ${msg}`),
@@ -59,7 +107,7 @@ function getApifyContext(): ApifyContext | null {
 async function main() {
   console.log("🚀 Starting xlist-scraper Actor...");
 
-  const context = getApifyContext();
+  const context = await getApifyContext();
 
   if (!context) {
     console.error("❌ Not running in Apify environment");

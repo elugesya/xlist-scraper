@@ -7,3 +7,4 @@ cookies.json
 coverage/
 .vscode/
 .idea/
+test-apify-actor.js
