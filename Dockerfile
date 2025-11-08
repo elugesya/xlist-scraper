@@ -31,9 +31,9 @@ ENV PERSIST_COOKIES_PATH=/data/cookies.json
 # Expose port
 EXPOSE 8080
 
-# Health check
+# Health check (only for server mode)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:8080/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); })"
 
-# Start server
-CMD ["node", "dist/api/server.js"]
+# Default to actor mode for Apify, can override to server mode
+CMD ["node", "dist/actor.js"]

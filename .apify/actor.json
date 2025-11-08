@@ -1,0 +1,37 @@
+{
+  "actorSpecification": 1,
+  "name": "xlist-scraper",
+  "version": "1.0.0",
+  "buildTag": "latest",
+  "environmentVariables": {},
+  "dockerfile": "./Dockerfile",
+  "readme": "./README.md",
+  "input": "./INPUT_SCHEMA.json",
+  "storages": {
+    "dataset": {
+      "actorSpecification": 1,
+      "title": "Scraped Tweets",
+      "description": "Tweets scraped from Twitter/X lists",
+      "views": {
+        "overview": {
+          "title": "Overview",
+          "transformation": {
+            "fields": [
+              "id",
+              "text",
+              "createdAt",
+              "likeCount",
+              "retweetCount",
+              "replyCount",
+              "sourceListURL"
+            ]
+          },
+          "display": {
+            "component": "table",
+            "properties": {}
+          }
+        }
+      }
+    }
+  }
+}
