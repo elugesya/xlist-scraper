@@ -14,6 +14,7 @@
     "maxTweets": {
       "title": "Max Tweets",
       "type": "integer",
+      "description": "Maximum number of tweets to collect across the session",
       "default": 200,
       "minimum": 1,
       "maximum": 2000
@@ -21,6 +22,7 @@
     "timeoutMs": {
       "title": "Timeout (ms)",
       "type": "integer",
+      "description": "Page default timeout in milliseconds for selectors and navigation",
       "default": 60000,
       "minimum": 10000,
       "maximum": 300000
@@ -28,21 +30,25 @@
     "headless": {
       "title": "Headless",
       "type": "boolean",
+      "description": "Run the browser in headless mode (recommended on Apify)",
       "default": true
     },
     "proxy": {
       "title": "Proxy URL",
       "type": "string",
+      "description": "Optional proxy URL, e.g. http://user:pass@host:port",
       "default": ""
     },
     "persistCookiesPath": {
       "title": "Cookies Path",
       "type": "string",
+      "description": "File path to store/load cookies (inside container)",
       "default": "/data/cookies.json"
     },
     "partialOk": {
       "title": "Allow Partial Results",
       "type": "boolean",
+      "description": "If enabled, returns partial results when an error occurs",
       "default": false
     }
   },
