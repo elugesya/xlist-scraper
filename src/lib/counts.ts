@@ -40,7 +40,10 @@ export function parseCount(countStr: string | null | undefined): number {
 /**
  * Extract count from element text content
  */
-export function extractCount(element: any): number {
+// Minimal shape we rely on for extracting text content
+type TextContentSource = { textContent?: string | null } | null | undefined;
+
+export function extractCount(element: TextContentSource): number {
   try {
     const text = element?.textContent?.trim() || "";
     return parseCount(text);

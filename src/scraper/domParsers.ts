@@ -8,7 +8,7 @@ import { extractTweetId } from "../lib/url.js";
  * Extract tweet data from an article element
  */
 export async function parseTweetElement(
-  article: ElementHandle<HTMLElement>
+  article: ElementHandle<HTMLElement | SVGElement>
 ): Promise<Tweet | null> {
   try {
     // Extract tweet ID from link
@@ -159,7 +159,8 @@ export async function isEndOfFeed(page: Page): Promise<boolean> {
  */
 export async function getTweetArticles(
   page: Page
-): Promise<ElementHandle<HTMLElement>[]> {
+): Promise<ElementHandle<HTMLElement | SVGElement>[]> {
+  // Playwright may return SVGElement handles (e.g., icons). Allow union type.
   return await page.$$('article[data-testid="tweet"]');
 }
 
@@ -169,23 +170,29 @@ export async function getTweetArticles(
 export async function checkForBlockers(
   page: Page
 ): Promise<{ blocked: boolean; reason?: string }> {
-  // Check for login prompt
-  const loginPrompt = await page.$(
+  // Check for login prompt using multiple selectors (page.$ accepts one selector per call)
+  const loginSelectors = [
     'text="Sign in to X"',
     'text="Log in to X"',
-    '[data-testid="login"]'
-  );
-  if (loginPrompt) {
-    return { blocked: true, reason: "LOGIN_REQUIRED" };
+    '[data-testid="login"]',
+  ];
+  for (const sel of loginSelectors) {
+    const loginPrompt = await page.$(sel);
+    if (loginPrompt) {
+      return { blocked: true, reason: "LOGIN_REQUIRED" };
+    }
   }
 
-  // Check for rate limit
-  const rateLimitText = await page.$(
+  // Check for rate limit indicators
+  const rateLimitSelectors = [
     'text="Rate limit exceeded"',
-    'text="Too many requests"'
-  );
-  if (rateLimitText) {
-    return { blocked: true, reason: "RATE_LIMIT" };
+    'text="Too many requests"',
+  ];
+  for (const sel of rateLimitSelectors) {
+    const rateLimitText = await page.$(sel);
+    if (rateLimitText) {
+      return { blocked: true, reason: "RATE_LIMIT" };
+    }
   }
 
   return { blocked: false };

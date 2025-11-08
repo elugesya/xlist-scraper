@@ -1,0 +1,50 @@
+{
+  "title": "X List Scraper Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "listURLs": {
+      "title": "List URLs",
+      "type": "array",
+      "description": "Array of Twitter/X list URLs to scrape",
+      "items": { "type": "string" },
+      "editor": "json",
+      "prefill": ["https://x.com/i/lists/1985510758294208956"]
+    },
+    "maxTweets": {
+      "title": "Max Tweets",
+      "type": "integer",
+      "default": 200,
+      "minimum": 1,
+      "maximum": 2000
+    },
+    "timeoutMs": {
+      "title": "Timeout (ms)",
+      "type": "integer",
+      "default": 60000,
+      "minimum": 10000,
+      "maximum": 300000
+    },
+    "headless": {
+      "title": "Headless",
+      "type": "boolean",
+      "default": true
+    },
+    "proxy": {
+      "title": "Proxy URL",
+      "type": "string",
+      "default": ""
+    },
+    "persistCookiesPath": {
+      "title": "Cookies Path",
+      "type": "string",
+      "default": "/data/cookies.json"
+    },
+    "partialOk": {
+      "title": "Allow Partial Results",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["listURLs"]
+}

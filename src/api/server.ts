@@ -15,8 +15,9 @@ async function createServer() {
   const fastify = Fastify({
     logger: {
       level: process.env.LOG_LEVEL || "info",
+      // Disable pretty transport in tests to avoid pino transport errors.
       transport:
-        process.env.NODE_ENV !== "production"
+        process.env.NODE_ENV !== "production" && process.env.VITEST !== "true"
           ? {
               target: "pino-pretty",
               options: {

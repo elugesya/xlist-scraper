@@ -43,7 +43,7 @@ export type ErrorResponse = {
   ok: false;
   error: string;
   message?: string;
-  details?: any[];
+  details?: unknown[];
   items?: ApiTweet[];
 };
 

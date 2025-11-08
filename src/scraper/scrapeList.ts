@@ -37,7 +37,7 @@ export async function scrapeList(
 
   try {
     // Launch browser
-    const launchOptions: any = {
+    const launchOptions: Parameters<typeof chromium.launch>[0] = {
       headless: opts.headless,
     };
 
@@ -50,7 +50,7 @@ export async function scrapeList(
     browser = await chromium.launch(launchOptions);
 
     // Create context with optional cookies
-    const contextOptions: any = {
+    const contextOptions: Parameters<Browser["newContext"]>[0] = {
       viewport: { width: 1280, height: 720 },
       userAgent:
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

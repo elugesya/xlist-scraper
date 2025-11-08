@@ -396,6 +396,75 @@ The application is ready to deploy to:
 - **AWS ECS/Fargate**: Use provided Dockerfile
 - **Heroku**: Buildpack compatible
 
+### Apify Actor Deployment
+
+To run this scraper as an Apify Actor:
+
+1. Ensure the Playwright version matches the base image. The provided Dockerfile uses `mcr.microsoft.com/playwright:v1.42.1-jammy` and `playwright@1.42.1` is pinned in `package.json`.
+2. Add an `INPUT_SCHEMA.json` at the project root so Apify can auto-generate UI for actor input (see example below).
+3. Apify's build uses a security model that may block certain package postinstall scripts. If you see warnings like `Ignored build scripts: esbuild`, run locally `pnpm approve-builds` to inspect; on Apify this generally isn't required here because we don't rely on those build scripts.
+4. Expose a single entrypoint. The current `CMD ["node", "dist/api/server.js"]` is sufficient. For pure scraping (no HTTP API) you could create a minimal `actor.js` that reads `process.env.APIFY_INPUT`.
+5. Set environment variables (e.g. `CONCURRENCY`, `HEADLESS`, `PERSIST_COOKIES_PATH`). For authenticated scraping, upload cookies as key-value store item and mount path or pass via input.
+
+Example `INPUT_SCHEMA.json` (placed at repository root):
+
+```json
+{
+  "title": "X List Scraper Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "listURLs": {
+      "title": "List URLs",
+      "type": "array",
+      "description": "Array of Twitter/X list URLs to scrape",
+      "items": { "type": "string" },
+      "editor": "json",
+      "prefill": ["https://x.com/i/lists/1985510758294208956"]
+    },
+    "maxTweets": {
+      "title": "Max Tweets",
+      "type": "integer",
+      "default": 200,
+      "minimum": 1,
+      "maximum": 2000
+    },
+    "timeoutMs": {
+      "title": "Timeout (ms)",
+      "type": "integer",
+      "default": 60000,
+      "minimum": 10000,
+      "maximum": 300000
+    },
+    "headless": {
+      "title": "Headless",
+      "type": "boolean",
+      "default": true
+    },
+    "proxy": {
+      "title": "Proxy URL",
+      "type": "string",
+      "default": ""
+    },
+    "persistCookiesPath": {
+      "title": "Cookies Path",
+      "type": "string",
+      "default": "/data/cookies.json"
+    },
+    "partialOk": {
+      "title": "Allow Partial Results",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["listURLs"]
+}
+```
+
+Actor input mapping to API parameters: `listURLs` → `listURL`, `maxTweets` → `max-tweets`, `timeoutMs` → `timeout-ms`.
+
+If you want to run without the server (returning dataset/output only), create an `actor.ts` that imports `scrapeList` and writes results using Apify SDK. (The SDK is not included here by default to keep dependencies slim.)
+
 ## Architecture
 
 ```

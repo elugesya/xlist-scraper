@@ -19,9 +19,7 @@ const PROXY = process.env.PROXY || "";
  */
 export async function registerRoutes(fastify: FastifyInstance) {
   // Health check endpoint
-  fastify.get("/health", async (request, reply) => {
-    return { status: "ok" };
-  });
+  fastify.get("/health", async () => ({ status: "ok" }));
 
   // Main scraping endpoint
   fastify.post<{
@@ -150,7 +148,8 @@ export async function registerRoutes(fastify: FastifyInstance) {
       }
 
       // Handle other errors
-      fastify.log.error("Unexpected error:", error);
+      // Pino/fastify logger expects an object first then optional message. Pass the error as object.
+      fastify.log.error({ error }, "Unexpected error");
       return reply.status(500).send({
         ok: false,
         error: "INTERNAL",
