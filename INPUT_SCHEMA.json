@@ -72,6 +72,20 @@
       "editor": "textfield",
       "default": ""
     },
+    "cookiesJson": {
+      "title": "Inline Cookies JSON",
+      "type": ["array", "object", "string"],
+      "description": "Paste cookies array (Playwright/Chrome export) or full storageState object. If a string, it should be JSON.",
+      "editor": "json",
+      "default": []
+    },
+    "cookiesUrl": {
+      "title": "Cookies Remote URL",
+      "type": "string",
+      "description": "HTTP(S) URL returning JSON: either an array of cookies or { cookies: [...] } storageState.",
+      "editor": "textfield",
+      "default": ""
+    },
     "partialOk": {
       "title": "Allow Partial Results",
       "type": "boolean",
