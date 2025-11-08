@@ -176,7 +176,6 @@ export async function checkForBlockers(
     'text="Log in to X"',
     'text="Sign in"',
     'text="Log in"',
-    'aria/Sign in',
     '[data-testid="login"]',
   ];
   for (const sel of loginSelectors) {
