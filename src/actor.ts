@@ -31,24 +31,40 @@ interface ApifyContext {
  */
 async function readInput(): Promise<ApifyInput> {
   const fs = await import("fs/promises");
+  const path = await import("path");
 
-  // Apify stores input at /tmp/INPUT
-  const inputPath = process.env.APIFY_INPUT_KEY 
-    ? `/apify_storage/key_value_stores/default/${process.env.APIFY_INPUT_KEY}`
-    : process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID
-    ? `/apify_storage/key_value_stores/${process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID}/INPUT`
-    : "/tmp/INPUT";
+  // Base storage dir
+  const baseDir = process.env.APIFY_LOCAL_STORAGE_DIR || "/apify_storage";
+  const kvBase = path.join(baseDir, "key_value_stores");
+  const storeId = process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID || "default";
+  const storeDir = path.join(kvBase, storeId);
+  const key = process.env.APIFY_INPUT_KEY || "INPUT";
 
-  try {
-    const inputContent = await fs.readFile(inputPath, "utf-8");
-    return JSON.parse(inputContent);
-  } catch (error) {
-    // Fallback to environment variable for local testing
-    if (process.env.APIFY_INPUT_VALUE) {
-      return JSON.parse(process.env.APIFY_INPUT_VALUE);
+  // Try common input file names
+  const candidates = [
+    path.join(storeDir, `${key}.json`),
+    path.join(storeDir, key),
+    "/tmp/INPUT.json",
+    "/tmp/INPUT",
+  ];
+
+  for (const p of candidates) {
+    try {
+      const inputContent = await fs.readFile(p, "utf-8");
+      return JSON.parse(inputContent);
+    } catch (_) {
+      // try next
     }
-    throw new Error(`Could not read input from ${inputPath}: ${error}`);
   }
+
+  // Fallback to environment variable for local testing
+  if (process.env.APIFY_INPUT_VALUE) {
+    return JSON.parse(process.env.APIFY_INPUT_VALUE);
+  }
+
+  throw new Error(
+    `Could not read input from any known location. Tried: ${candidates.join(", ")}`
+  );
 }
 
 /**
