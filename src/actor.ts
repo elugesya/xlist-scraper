@@ -15,6 +15,8 @@ interface ApifyInput {
   proxyGroups?: string[];
   persistCookiesPath?: string;
   cookiesKey?: string;
+  cookiesJson?: unknown; // array of cookie objects or storageState-like { cookies: [...] }
+  cookiesUrl?: string;   // remote URL returning cookies JSON
   partialOk?: boolean;
 }
 
@@ -23,6 +25,68 @@ interface ApifyInput {
 /**
  * Main Actor handler
  */
+type SimpleCookie = {
+  name: string;
+  value: string;
+  domain?: string;
+  path?: string;
+  expires?: number;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: "Strict" | "Lax" | "None";
+};
+
+function normalizeCookies(data: unknown): SimpleCookie[] | null {
+  try {
+    let value = data;
+    if (typeof value === "string") {
+      value = JSON.parse(value);
+    }
+    // If storageState-like { cookies: [...] }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const obj = value as Record<string, unknown>;
+      if (Array.isArray(obj.cookies)) {
+        return coerceCookieArray(obj.cookies as unknown[]);
+      }
+    }
+    // If it's already an array of cookies
+    if (Array.isArray(value)) {
+      return coerceCookieArray(value as unknown[]);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function coerceCookieArray(arr: unknown[]): SimpleCookie[] | null {
+  const out: SimpleCookie[] = [];
+  for (const item of arr) {
+    if (!item || typeof item !== "object") continue;
+    const obj = item as Record<string, unknown>;
+
+    const name = typeof obj.name === "string" ? obj.name : undefined;
+    const value = typeof obj.value === "string" ? obj.value : undefined;
+    if (!name || !value) continue;
+
+    const cookie: SimpleCookie = { name, value };
+    if (typeof obj.domain === "string") cookie.domain = obj.domain;
+    if (typeof obj.path === "string") cookie.path = obj.path;
+    const exp = typeof obj.expires === "number" ? obj.expires : typeof obj.expiry === "number" ? obj.expiry : undefined;
+    if (typeof exp === "number") cookie.expires = exp;
+    if (typeof obj.httpOnly === "boolean") cookie.httpOnly = obj.httpOnly;
+    if (typeof obj.secure === "boolean") cookie.secure = obj.secure;
+    const ss = obj.sameSite;
+    if (ss === "Strict" || ss === "Lax" || ss === "None") cookie.sameSite = ss;
+
+    // Some exports omit path; default to '/'
+    if (!cookie.path) cookie.path = "/";
+
+    out.push(cookie);
+  }
+  return out.length ? out : null;
+}
+
 async function main() {
   await Actor.init();
   log.info("🚀 Starting xlist-scraper Actor...");
@@ -47,24 +111,67 @@ async function main() {
     error?: string;
   }> = [];
 
-  // If cookies are provided via KV store, save to file
-  if (input.cookiesKey) {
+  // If cookies are provided via any source, save to file for scraper to consume
+    // Load cookies from any supported source
+    const cookiePath = input.persistCookiesPath || "/data/cookies.json";
+    let cookiesWritten = false;
     try {
-      const cookies = await Actor.getValue(input.cookiesKey);
-      if (cookies) {
-        const fs = await import("fs/promises");
-        const path = await import("path");
-        const cookiePath = input.persistCookiesPath || "/data/cookies.json";
+      const fs = await import("fs/promises");
+      const path = await import("path");
+
+      const writeCookies = async (cookies: SimpleCookie[]) => {
         await fs.mkdir(path.dirname(cookiePath), { recursive: true });
         await fs.writeFile(cookiePath, JSON.stringify(cookies, null, 2));
-        log.info(`Loaded cookies from KV key '${input.cookiesKey}' into ${cookiePath}`);
-      } else {
-        log.warning(`cookiesKey '${input.cookiesKey}' not found or empty`);
+        cookiesWritten = true;
+      };
+
+      // Priority 1: inline JSON
+      const inlineCookies = normalizeCookies(input.cookiesJson);
+      if (inlineCookies) {
+        await writeCookies(inlineCookies);
+        log.info(`Loaded cookies from input.cookiesJson into ${cookiePath}`);
+      }
+
+      // Priority 2: KV store key
+      if (!cookiesWritten && input.cookiesKey) {
+        const kvValue = await Actor.getValue(input.cookiesKey);
+        const kvCookies = normalizeCookies(kvValue);
+        if (kvCookies) {
+          await writeCookies(kvCookies);
+          log.info(`Loaded cookies from KV key '${input.cookiesKey}' into ${cookiePath}`);
+        } else if (kvValue) {
+          log.warning(`cookiesKey '${input.cookiesKey}' exists but format is not recognized`);
+        } else {
+          log.warning(`cookiesKey '${input.cookiesKey}' not found or empty`);
+        }
+      }
+
+      // Priority 3: remote URL
+      if (!cookiesWritten && input.cookiesUrl) {
+        try {
+          const fetchFn = (globalThis as unknown as {
+            fetch: (url: string) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
+          }).fetch;
+          const res = await fetchFn(input.cookiesUrl);
+          if (res.ok) {
+            const remoteData = await res.json();
+            const remoteCookies = normalizeCookies(remoteData);
+            if (remoteCookies) {
+              await writeCookies(remoteCookies);
+              log.info(`Loaded cookies from cookiesUrl into ${cookiePath}`);
+            } else {
+              log.warning(`cookiesUrl returned unrecognized format`);
+            }
+          } else {
+            log.warning(`cookiesUrl request failed with status ${res.status}`);
+          }
+        } catch (e) {
+          log.warning(`Failed to fetch cookiesUrl: ${(e as Error).message}`);
+        }
       }
     } catch (e) {
-      log.warning(`Failed to load cookies: ${(e as Error).message}`);
+      log.warning(`Cookie handling failed: ${(e as Error).message}`);
     }
-  }
 
   // Prepare proxy
   let proxyUrl = input.proxy || "";
