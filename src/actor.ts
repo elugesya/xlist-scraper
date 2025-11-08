@@ -33,37 +33,57 @@ async function readInput(): Promise<ApifyInput> {
   const fs = await import("fs/promises");
   const path = await import("path");
 
-  // Base storage dir
-  const baseDir = process.env.APIFY_LOCAL_STORAGE_DIR || "/apify_storage";
-  const kvBase = path.join(baseDir, "key_value_stores");
-  const storeId = process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID || "default";
-  const storeDir = path.join(kvBase, storeId);
-  const key = process.env.APIFY_INPUT_KEY || "INPUT";
-
-  // Try common input file names
-  const candidates = [
-    path.join(storeDir, `${key}.json`),
-    path.join(storeDir, key),
-    "/tmp/INPUT.json",
-    "/tmp/INPUT",
-  ];
-
-  for (const p of candidates) {
+  // Preferred: Apify sets APIFY_INPUT env var containing JSON.
+  if (process.env.APIFY_INPUT) {
     try {
-      const inputContent = await fs.readFile(p, "utf-8");
-      return JSON.parse(inputContent);
-    } catch (_) {
-      // try next
+      return JSON.parse(process.env.APIFY_INPUT);
+    } catch (e) {
+      throw new Error(`APIFY_INPUT is set but could not be parsed: ${(e as Error).message}`);
     }
   }
 
-  // Fallback to environment variable for local testing
+  // Local testing convenience env var
   if (process.env.APIFY_INPUT_VALUE) {
-    return JSON.parse(process.env.APIFY_INPUT_VALUE);
+    try {
+      return JSON.parse(process.env.APIFY_INPUT_VALUE);
+    } catch (e) {
+      throw new Error(`APIFY_INPUT_VALUE could not be parsed: ${(e as Error).message}`);
+    }
+  }
+
+  // File system fallbacks (rarely needed on platform, but useful locally)
+  const baseDirCandidates = [
+    process.env.APIFY_LOCAL_STORAGE_DIR,
+    "/home/apify/storage",
+    "/home/apify",
+    "/apify_storage",
+    "/tmp",
+  ].filter(Boolean) as string[];
+
+  const storeId = process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID || "default";
+  const key = process.env.APIFY_INPUT_KEY || "INPUT";
+
+  const pathCandidates: string[] = [];
+  for (const b of baseDirCandidates) {
+    pathCandidates.push(
+      path.join(b, "key_value_stores", storeId, `${key}.json`),
+      path.join(b, "key_value_stores", storeId, key),
+      path.join(b, `${key}.json`),
+      path.join(b, key)
+    );
+  }
+
+  for (const candidate of pathCandidates) {
+    try {
+      const content = await fs.readFile(candidate, "utf-8");
+      return JSON.parse(content);
+    } catch {
+      // continue
+    }
   }
 
   throw new Error(
-    `Could not read input from any known location. Tried: ${candidates.join(", ")}`
+    `Could not read Actor input. Checked env vars APIFY_INPUT / APIFY_INPUT_VALUE and paths: ${pathCandidates.join(", ")}`
   );
 }
 
