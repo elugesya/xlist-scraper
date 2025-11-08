@@ -9,7 +9,7 @@
       "description": "Array of Twitter/X list URLs to scrape",
       "items": { "type": "string" },
       "editor": "json",
-      "prefill": ["https://x.com/i/lists/1985510758294208956"]
+      "prefill": ["https://x.com/i/lists/1987085163168223558"]
     },
     "maxTweets": {
       "title": "Max Tweets",
