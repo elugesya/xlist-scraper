@@ -82,8 +82,27 @@ async function readInput(): Promise<ApifyInput> {
     }
   }
 
+  // As a last resort, fetch input from Apify API using run ID + token
+  const token = process.env.APIFY_TOKEN;
+  const runId =
+    process.env.APIFY_ACTOR_RUN_ID ||
+    process.env.APIFY_RUN_ID ||
+    process.env.ACTOR_RUN_ID ||
+    "";
+  if (token && runId) {
+    try {
+      const url = `https://api.apify.com/v2/actor-runs/${runId}/input?token=${token}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        return (await res.json()) as ApifyInput;
+      }
+    } catch {
+      // ignore fetch errors and fall through
+    }
+  }
+
   throw new Error(
-    `Could not read Actor input. Checked env vars APIFY_INPUT / APIFY_INPUT_VALUE and paths: ${pathCandidates.join(", ")}`
+    `Could not read Actor input. Checked env vars APIFY_INPUT/APIFY_INPUT_VALUE, dataset store paths, and API (runId=${runId ? "set" : "not set"}). Paths tried: ${pathCandidates.join(", ")}`
   );
 }
 
